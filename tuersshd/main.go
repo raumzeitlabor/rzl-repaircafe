@@ -127,13 +127,28 @@ func handleChanReq(chanReq ssh.NewChannel) {
         return
     }
 
-    for req := range requests {
-        if req.Type == "exec" {
-            handleExec(channel, req)
-            if req.WantReply {
-                req.Reply(true, nil)
-            }
-            break
+    exitloop := false
+    for {
+        select {
+            case req := <-requests:
+                if req == nil {
+                    continue
+                }
+                if req.Type == "exec" {
+                    handleExec(channel, req)
+                    if req.WantReply {
+                        req.Reply(true, nil)
+                    }
+                    exitloop = true
+                }
+                req.Reply(false, nil)
+            case <-time.After(3 * time.Second):
+                log.Println("no exec chanreq received, time out")
+                exitloop = true
+                break
+        }
+        if exitloop {
+           break
         }
     }
 
@@ -159,10 +174,11 @@ func handleExec(ch ssh.Channel, req *ssh.Request) {
         err := sendCommand(cmd)
         if err != nil {
             log.Println("could not write to ctrl sock:", err)
-            return
+            msg = "error: could not write to socket"
+        } else {
+            log.Printf("sent command '%s' to ctrl", cmd)
+            msg = "ok"
         }
-        log.Printf("sent command '%s' to ctrl", cmd)
-        msg = "ok"
     default:
         msg = "invalid command " + cmd
     }
