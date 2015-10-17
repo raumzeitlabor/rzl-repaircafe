@@ -153,6 +153,7 @@ func handleExec(ch ssh.Channel, req *ssh.Request) {
     cmd := string(req.Payload[4:])
     log.Println("received cmd", cmd)
 
+    var msg string
     switch cmd {
     case "open", "close":
         err := sendCommand(cmd)
@@ -160,10 +161,13 @@ func handleExec(ch ssh.Channel, req *ssh.Request) {
             log.Println("could not write to ctrl sock:", err)
             return
         }
-        log.Printf("send command '%s' to ctrl", cmd)
+        log.Printf("sent command '%s' to ctrl", cmd)
+        msg = "ok"
     default:
-        ch.Write([]byte("invalid command " + cmd + "\r\n"))
+        msg = "invalid command " + cmd
     }
+
+    ch.Write([]byte(msg + "\r\n"))
 }
 
 func sendCommand(cmd string) error {
