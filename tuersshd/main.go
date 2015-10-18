@@ -76,6 +76,9 @@ func getServerConfig() *ssh.ServerConfig {
 }
 
 func pubkeyAuthCallback(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+    keyring.RLock()
+    defer keyring.Unlock()
+
     if keyring.Keys == nil {
         log.Println("rejecting authentication due to missing keyring")
         return nil, errors.New("no keyring available")
